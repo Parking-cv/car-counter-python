@@ -4,6 +4,12 @@ import numpy as np
 
 
 class CentroidTracker:
+    """
+    Patrick's centroid tracker object.
+
+    Creates a map of an object's centroids, which is retained through several frames
+    in order to track the movement of the object
+    """
     def __init__(self, maxDisappeared=50, maxDistance=50):
         self.nextObjectID = 0
         self.objects = OrderedDict()

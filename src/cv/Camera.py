@@ -1,6 +1,6 @@
 class Camera:
     """
-    This class is a placeholder for an object which can stream data from the Pi's camera to OpenCV
+    This class is a placeholder for an object which can stream data from the Pi's camera
     """
 
     def __init__(self):

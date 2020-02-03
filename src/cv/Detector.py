@@ -15,6 +15,9 @@ CONSIDER_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 
 
 class TrackableObject:
+    """
+    Object containing properties of a trackable object (car, etc)
+    """
     def __init__(self, objectID, centroid=None):
         self.objectID = objectID
         self.centroids = [centroid]
@@ -24,7 +27,10 @@ class TrackableObject:
         self.centroids.append(centroid)
 
 
-class Counter:
+class Detector:
+    """
+    Object containing the code for identification of an object and its movement
+    """
     def __init__(self, config):
         self.centroidTracker = CentroidTracker(maxDisappeared=40, maxDistance=50)
         self.networkClient = NetworkClient()

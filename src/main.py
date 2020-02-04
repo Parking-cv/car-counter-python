@@ -1,9 +1,31 @@
-def main():
-    # Create config object from environment variables
-    # Create camera instance
-    # Start event loop which analyzes the video feed
-    pass
+from time import sleep
 
+from src.network.NetworkManager import NetworkManager
+from src.NetworkConfig import NetworkConfig
+
+
+def main():
+    # Test network
+
+    config = NetworkConfig('localhost', 'c-9p)gWR', '/entry', '/exit', 3000)
+    manager = NetworkManager(config)
+
+    manager.start()
+
+    sleep(1)
+
+    manager.notifyEntry()
+    manager.notifyEntry()
+
+    sleep(1)
+
+    manager.notifyExit()
+    manager.notifyExit()
+
+    sleep(1)
+
+    for res in manager.getResponses():
+        print(res['body'])
 
 if __name__ == "__main__":
     main()

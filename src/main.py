@@ -14,18 +14,18 @@ def main():
 
     sleep(1)
 
-    manager.notifyEntry()
-    manager.notifyEntry()
+    manager.testNetwork()
+    manager.testNetwork()
 
     sleep(1)
 
-    manager.notifyExit()
-    manager.notifyExit()
+    manager.testNetwork()
+    manager.testNetwork()
 
     sleep(1)
 
     for res in manager.getResponses():
-        print(res['body'])
+        print(res.body)
 
 if __name__ == "__main__":
     main()

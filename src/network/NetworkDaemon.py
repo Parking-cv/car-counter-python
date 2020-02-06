@@ -1,7 +1,10 @@
-import json
-from time import sleep
 from http.client import HTTPConnection
 from threading import Thread
+from time import sleep
+from queue import Queue
+
+from src import NetworkConfig
+from src.network.Response import Response
 
 
 class NetworkDaemon(Thread):
@@ -17,8 +20,10 @@ class NetworkDaemon(Thread):
         run: overrides Thread.run(). Creates a connection to the server and reuses it for each network request.
             Loops forever, and sends requests whenever it receives one from the queue
     """
-    def __init__(self, networkConfig, requests, responses):
+
+    def __init__(self, networkConfig: NetworkConfig, requests: Queue, responses: Queue):
         Thread.__init__(self)
+        self.daemon = True
         self.pendingRequests = requests
         self.responses = responses
         self.headers = {'Authorization': 'Bearer ' + networkConfig.token}
@@ -37,18 +42,18 @@ class NetworkDaemon(Thread):
             while not sent:
                 try:
                     self.client.request(
-                        request['method'],
-                        request['url'],
-                        json.dumps(request['body']),
+                        request.method,
+                        request.url,
+                        request.body,
                         self.headers
                     )
 
                     res = self.client.getresponse()
-                    self.responses.put({
-                        'headers': res.getheaders(),
-                        'body': res.read()
-                    })
+
+                    self.responses.put(
+                        Response(res.status, res.getheaders(), res.read())
+                    )
 
                     sent = True
                 except ConnectionError:
-                    sleep(2)
+                    sleep(15)

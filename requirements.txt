@@ -3,3 +3,5 @@ numpy==1.18.1
 imutils==0.5.3
 opencv-python==4.2.0.32
 dlib==19.19.0
+picamera==1.13
+pyzmq==18.1.1

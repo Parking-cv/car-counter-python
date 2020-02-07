@@ -1,13 +1,8 @@
-import base64
-import json
 from collections import Generator
-from datetime import datetime
 from queue import Queue
 
-import cv2
-import numpy as np
+import requests
 
-from src import NetworkConfig
 from src.network.NetworkDaemon import NetworkDaemon
 
 
@@ -23,47 +18,29 @@ class NetworkManager(object):
         sendFrame: send a video frame to the server for analysis
         getResponse: get the most recent response
         getResponses: get all responses from network requests as a generator
-        terminate: call join on the network daemon before ending the program
+        terminate: join the daemon with the main thread before exiting
     """
 
-    def __init__(self, networkConfig: NetworkConfig):
-        self.config = networkConfig
+    def __init__(self, uri: str, urls: dict):
+        self.uri = uri
+        self.urls = urls
         self.pendingRequests = Queue()
         self.responses = Queue()
-        self.daemon = NetworkDaemon(networkConfig, self.pendingRequests, self.responses)
-
+        self.daemon = NetworkDaemon(requests.Session(), self.pendingRequests, self.responses)
+                                        # TODO tls   ^
     def start(self):
         self.daemon.start()
 
-    def uploadFrame(self, frame):
-        self.pendingRequests.put({
-            'method': 'POST',
-            'url': 'http://localhost:3000' + self.config.urls['frame'],
-            'headers': {
-                'Authorization': 'Bearer ' + self.config.token
-            },
-            'data': None,
-            'json': None,
-            'files': {
-                'media': frame
-            }
-        })
+    def uploadFrames(self, frames):
+        self.pendingRequests.put(
+            requests.Request(
+                method='POST',
+                url=self.uri + self.urls['frame'],
+                files=frames,
+            )
+        )
 
-    def testNetwork(self):
-        self.pendingRequests.put({
-            'method': 'POST',
-            'url': 'http://localhost:3000' + self.config.urls['test'],
-            'headers': {
-                'Authorization': 'Bearer ' + self.config.token
-            },
-            'data': None,
-            'json': {
-                'message': 'Hello, World!'
-            },
-            'files': None
-        })
-
-    def getResponse(self) -> dict:
+    def getResponse(self) -> requests.Response:
         yield self.responses.get()
 
     def getResponses(self) -> Generator:

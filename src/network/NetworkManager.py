@@ -1,14 +1,14 @@
+import base64
 import json
 from collections import Generator
-
-import numpy as np
 from datetime import datetime
 from queue import Queue
 
-from src.network.NetworkDaemon import NetworkDaemon
+import cv2
+import numpy as np
+
 from src import NetworkConfig
-from src.network.Request import Request
-from src.network.Response import Response
+from src.network.NetworkDaemon import NetworkDaemon
 
 
 class NetworkManager(object):
@@ -35,34 +35,35 @@ class NetworkManager(object):
     def start(self):
         self.daemon.start()
 
-    def uploadFrame(self, frame: np.ndarray):
-        if not frame.flags['C_CONTIGUOUS']:
-            frame = np.ascontigousarray(frame)
-
-        self.pendingRequests.put(
-            Request(
-                'POST',
-                self.config.frameUrl,
-                {
-                    'timestamp': datetime.now().isoformat(),
-                    'pi_id': 1,
-                    'frame': frame.tobytes()
-                },
-            )
-        )
+    def uploadFrame(self, frame):
+        self.pendingRequests.put({
+            'method': 'POST',
+            'url': 'http://localhost:3000' + self.config.urls['frame'],
+            'headers': {
+                'Authorization': 'Bearer ' + self.config.token
+            },
+            'data': None,
+            'json': None,
+            'files': {
+                'media': frame
+            }
+        })
 
     def testNetwork(self):
-        self.pendingRequests.put(
-            Request(
-                'POST',
-                '/test',
-                {
-                    'message': 'Hello, World!'
-                }
-            )
-        )
+        self.pendingRequests.put({
+            'method': 'POST',
+            'url': 'http://localhost:3000' + self.config.urls['test'],
+            'headers': {
+                'Authorization': 'Bearer ' + self.config.token
+            },
+            'data': None,
+            'json': {
+                'message': 'Hello, World!'
+            },
+            'files': None
+        })
 
-    def getResponse(self) -> Response:
+    def getResponse(self) -> dict:
         yield self.responses.get()
 
     def getResponses(self) -> Generator:

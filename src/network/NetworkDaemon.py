@@ -1,10 +1,11 @@
+import json
 from http.client import HTTPConnection
+import requests
+from queue import Queue
 from threading import Thread
 from time import sleep
-from queue import Queue
 
 from src import NetworkConfig
-from src.network.Response import Response
 
 
 class NetworkDaemon(Thread):
@@ -26,7 +27,6 @@ class NetworkDaemon(Thread):
         self.daemon = True
         self.pendingRequests = requests
         self.responses = responses
-        self.headers = {'Authorization': 'Bearer ' + networkConfig.token}
         self.client = HTTPConnection(networkConfig.host, networkConfig.port)
 
     def run(self):
@@ -38,21 +38,23 @@ class NetworkDaemon(Thread):
             sent = False
 
             # Try to send a message to the server, if the request isn't successful,
-            # try again after 1 second.
+            # try again after 15 seconds.
             while not sent:
                 try:
-                    self.client.request(
-                        request.method,
-                        request.url,
-                        request.body,
-                        self.headers
+                    res = requests.request(
+                        request['method'],
+                        request['url'],
+                        headers=request['headers'],
+                        data=request['data'],
+                        json=request['json'],
+                        files=request['files'],
                     )
 
-                    res = self.client.getresponse()
-
-                    self.responses.put(
-                        Response(res.status, res.getheaders(), res.read())
-                    )
+                    self.responses.put({
+                        'status': res.status_code,
+                        'headers': res.headers,
+                        'body': res.json()
+                    })
 
                     sent = True
                 except ConnectionError:

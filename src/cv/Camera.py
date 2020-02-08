@@ -1,16 +1,8 @@
-class Camera:
-    """
-    This class is a placeholder for an object which can stream data from the Pi's camera
-    """
+from imutils.video.pivideostream import PiVideoStream
 
-    def __init__(self):
-        pass
+# We should just use PiVideoStream directly since it provides all the functionality we need
+# We will also need to use zmq like Patrick did because picamera will be much easier to use
+# with zmq and numpy, since the frames are arrays of RGB
 
-    def stream(self):
-        pass
+# https://picamera.readthedocs.io/en/release-1.13/fov.html
 
-    def frames(self):
-        pass
-
-    def getFrame(self):
-        pass

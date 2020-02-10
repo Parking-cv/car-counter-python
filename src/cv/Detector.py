@@ -5,7 +5,7 @@ import dlib
 
 from src.cv.Camera import Camera
 from src.cv.CentroidTracker import CentroidTracker
-from src.network.NetworkClient import NetworkClient
+from src.network.NetworkManager import NetworkManager
 
 # static
 CONSIDER_CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -33,7 +33,7 @@ class Detector:
     """
     def __init__(self, config):
         self.centroidTracker = CentroidTracker(maxDisappeared=40, maxDistance=50)
-        self.networkClient = NetworkClient()
+        self.networkClient = NetworkManager()
         self.camera = Camera()
         self.numFrames = 0
         self.count = 0
@@ -77,7 +77,9 @@ class Detector:
                         if CONSIDER_CLASSES[idx] in self.consider:
                             box = detections[0, 0, i, 3:7] * np.array([width, height, width, height])
                             (startX, startY, endX, endY) = box.astype("int")
-
+                            # If we can get rid of dlib as a dependency that would be great,
+                            # it will be a pain in the ass to build on risc architecture
+                            # plus it will probably fry the pi when we try to compile it
                             tracker = dlib.correlation_tracker()
                             rect = dlib.rectangle(startX, startY, endX, endY)
                             tracker.start_track(rgb, rect)

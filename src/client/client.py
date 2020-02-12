@@ -9,6 +9,8 @@ from datetime import datetime
 import argparse
 import socket
 import time
+from skimage.measure import compare_ssim
+import cv2
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -22,7 +24,7 @@ ap.add_argument("-f", "--framerate", type=int, default=20,
                 help="framerate of captured footage")
 args = vars(ap.parse_args())
 
-def check_image(frame, skippedPixels=3):
+def check_image(frame):
     if globals()['lastFrame'] is None:
         globals()['lastFrame'] = frame
     else:
@@ -33,23 +35,14 @@ def check_image(frame, skippedPixels=3):
         assert i1.shape == i2.shape, "Different kinds of images."
         assert i1.size == i2.size, "Different sizes."
 
-        pairs = zip(i1[::skippedPixels, ::skippedPixels], i2[::skippedPixels, ::skippedPixels])
-        if len(i1[0]) == 1:
-            total = 0
-            for p1, p2 in pairs:
-                total += abs(p1-p2)
-            dif = total
-        else:
-            total = 0
-            diff = lambda a, b: abs(int(a)-int(b))
-            diff = np.vectorize(diff)
-            for p1, p2 in pairs:
-                for c1, c2 in zip(p1,p2):
-                    total += np.sum(diff(c1[:], c2[:]))
-            dif = total
+        # For more performance get these to work
+        # grayF1 = cv2.cvtColor(i1, cv2.COLOR_BAYER_BG2GRAY)
+        # grayF2 = cv2.cvtColor(i2, cv2.COLOR_BAYER_BG2GRAY)
 
-        ncomponents = (i1.shape[0] * i1.shape[1] * 3)/5
-        print("Difference (percentage):", (dif / 255.0 * 100) / ncomponents)
+        # Currently working on about a .4 second timer, seems to be as good as I am gonna get atm
+        (score, diff) = compare_ssim(i1, i2, full=True, multichannel=True)
+        diff = (diff * 255).astype("uint8")
+        print("SSIM: {}".format(score))
 
         print("End Time: " + datetime.now().strftime("%M:%S.%f"))
         globals()['lastFrame'] = frame
@@ -60,7 +53,7 @@ def check_image(frame, skippedPixels=3):
 #     args["server_ip"]))
 # get the host name and initialize the video stream
 rpiName = socket.gethostname()
-vs = VideoStream(usePiCamera=True, resolution=(args["res_width"],
+vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
                                                args["res_height"]), framerate=args["framerate"]).start()
 
 # camera warmup
@@ -71,5 +64,5 @@ globals()['lastFrame'] = None
 while True:
     # read the frame from the camera and send it to the server
     frame = vs.read()
-    check_image(frame,3)
+    check_image(frame)
     # sender.send_image(rpiName, frame)

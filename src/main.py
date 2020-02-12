@@ -15,7 +15,7 @@ def main():
     manager.start()
 
     manager.uploadFrames({
-		str(datetime.utcnow().isoformat('T')) + 'Z' : knight
+		str(datetime.utcnow().isoformat('T')) + 'Z'  : knight
     })
 
     sleep(1)

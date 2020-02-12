@@ -2,14 +2,13 @@
 # python client.py -s SERVER_IP
 
 from imutils.video import VideoStream
-import numpy as np
-import imagezmq
-from PIL import Image
 from datetime import datetime
 import argparse
 import socket
 import time
 from skimage.measure import compare_ssim
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
 import cv2
 
 # construct the argument parser and parse the arguments
@@ -28,7 +27,7 @@ def check_image(frame):
     if globals()['lastFrame'] is None:
         globals()['lastFrame'] = frame
     else:
-        print("Start Time: " + datetime.now().strftime("%M:%S.%f"))
+        # print("Start Time: " + datetime.now().strftime("%M:%S.%f"))
 
         i1 = globals()['lastFrame']
         i2 = frame
@@ -41,28 +40,52 @@ def check_image(frame):
 
         # Currently working on about a .4 second timer, seems to be as good as I am gonna get atm
         (score, diff) = compare_ssim(i1, i2, full=True, multichannel=True)
-        diff = (diff * 255).astype("uint8")
-        print("SSIM: {}".format(score))
+        # print("SSIM: {}".format(score))
 
-        print("End Time: " + datetime.now().strftime("%M:%S.%f"))
+        # print("End Time: " + datetime.now().strftime("%M:%S.%f"))
         globals()['lastFrame'] = frame
+        if score < .8:
+            # print("something happening")
+            return True
+        return False
 
 # initialize the ImageSender object with the socket address of the
 # server
 # sender = imagezmq.ImageSender(connect_to="tcp://{}:5555".format(
 #     args["server_ip"]))
 # get the host name and initialize the video stream
-rpiName = socket.gethostname()
-vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
-                                               args["res_height"]), framerate=args["framerate"]).start()
 
 # camera warmup
 time.sleep(2.0)
 
 globals()['lastFrame'] = None
 
-while True:
-    # read the frame from the camera and send it to the server
-    frame = vs.read()
-    check_image(frame)
-    # sender.send_image(rpiName, frame)
+async def saving_frames(vs, framerate):
+    while True:
+        frame = vs.read()
+        print("Saving something")
+        await asyncio.sleep(1/framerate)
+
+async def motion_track(vs, acceptable_difference):
+    while True:
+        if check_image(vs.read()):
+            await sendStoredFiles()
+        await asyncio.sleep(0)
+
+async def sendStoredFiles():
+    print("Sending files")
+
+async def client():
+    vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
+                                                    args["res_height"]), framerate=args["framerate"]).start()
+
+    loop = asyncio.get_event_loop()
+
+    savingTask = loop.create_task(saving_frames(vs, args["framerate"]))
+    checkingTask = loop.create_task(motion_track(vs, .8))
+
+    await savingTask
+    await checkingTask
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(client())

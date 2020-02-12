@@ -6,7 +6,7 @@ from datetime import datetime
 import argparse
 import socket
 import time
-from skimage.measure import compare_ssim
+from skimage.metrics import structural_similarity
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
 import cv2
@@ -23,31 +23,27 @@ ap.add_argument("-f", "--framerate", type=int, default=20,
                 help="framerate of captured footage")
 args = vars(ap.parse_args())
 
-def check_image(frame):
-    if globals()['lastFrame'] is None:
-        globals()['lastFrame'] = frame
-    else:
-        # print("Start Time: " + datetime.now().strftime("%M:%S.%f"))
+def check_image(previousFrame, frame):
+    # print("Start Time: " + datetime.now().strftime("%M:%S.%f"))
 
-        i1 = globals()['lastFrame']
-        i2 = frame
-        assert i1.shape == i2.shape, "Different kinds of images."
-        assert i1.size == i2.size, "Different sizes."
+    i1 = previousFrame
+    i2 = frame
+    assert i1.shape == i2.shape, "Different kinds of images."
+    assert i1.size == i2.size, "Different sizes."
 
-        # For more performance get these to work
-        # grayF1 = cv2.cvtColor(i1, cv2.COLOR_BAYER_BG2GRAY)
-        # grayF2 = cv2.cvtColor(i2, cv2.COLOR_BAYER_BG2GRAY)
+    # For more performance get these to work
+    # grayF1 = cv2.cvtColor(i1, cv2.COLOR_BAYER_BG2GRAY)
+    # grayF2 = cv2.cvtColor(i2, cv2.COLOR_BAYER_BG2GRAY)
 
-        # Currently working on about a .4 second timer, seems to be as good as I am gonna get atm
-        (score, diff) = compare_ssim(i1, i2, full=True, multichannel=True)
-        # print("SSIM: {}".format(score))
+    # Currently working on about a .4 second timer, seems to be as good as I am gonna get atm
+    (score, diff) = structural_similarity(i1, i2, full=True, multichannel=True)
+    print("SSIM: {}".format(score))
 
-        # print("End Time: " + datetime.now().strftime("%M:%S.%f"))
-        globals()['lastFrame'] = frame
-        if score < .8:
-            # print("something happening")
-            return True
-        return False
+    # print("End Time: " + datetime.now().strftime("%M:%S.%f"))
+    if score < .9:
+        # print("something happening")
+        return True
+    return False
 
 # initialize the ImageSender object with the socket address of the
 # server
@@ -60,19 +56,16 @@ time.sleep(2.0)
 
 globals()['lastFrame'] = None
 
-async def saving_frames(vs, framerate):
-    while True:
-        frame = vs.read()
-        print("Saving something")
-        await asyncio.sleep(1/framerate)
+def saving_frames(frame, count):
+    print("Saving something: " + str(count))
 
-async def motion_track(vs, acceptable_difference):
-    while True:
-        if check_image(vs.read()):
-            await sendStoredFiles()
-        await asyncio.sleep(0)
+def motion_track(previousFrame, frame, count, acceptable_difference):
+    if check_image(previousFrame, frame):
+        sendStoredFiles()
+    else:
+        print("No motion Detected: " + str(count))
 
-async def sendStoredFiles():
+def sendStoredFiles():
     print("Sending files")
 
 async def client():
@@ -80,12 +73,23 @@ async def client():
                                                     args["res_height"]), framerate=args["framerate"]).start()
 
     loop = asyncio.get_event_loop()
+    executor = ProcessPoolExecutor(2)
 
-    savingTask = loop.create_task(saving_frames(vs, args["framerate"]))
-    checkingTask = loop.create_task(motion_track(vs, .8))
-
-    await savingTask
-    await checkingTask
+    lastFrame = None
+    count = 0
+    frameCount = 0
+    while True:
+        frame = vs.read()
+        asyncio.ensure_future(loop.run_in_executor(executor, saving_frames, frame, count))
+        # Checking once every half second
+        if frameCount == (args["framerate"]/2):
+            if lastFrame is not None:
+                asyncio.ensure_future(loop.run_in_executor(executor, motion_track, lastFrame, frame, count, .8))
+            lastFrame = frame
+            frameCount = 0
+        count += 1
+        frameCount += 1
+        time.sleep(1/args["framerate"])
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(client())

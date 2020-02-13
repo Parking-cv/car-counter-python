@@ -11,6 +11,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import cv2
 import os
+from src.network.NetworkManager import NetworkManager
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -65,19 +66,19 @@ def saving_frames(frame, count):
     filename = "images/frame_" + datetime.now().isoformat() + ".jpg"
     cv2.imwrite(filename, frame)
 
-def motion_track(previousFrame, frame, count, acceptable_difference):
+def motion_track(previousFrame, frame, count, acceptable_difference, networkManager):
     # In case this frame is correct, get a correct datetime for the start time
     start = datetime.now()
     if check_image(previousFrame, frame):
         globals()["motion_tracking"] = False
         time.sleep(5)
         end = datetime.now()
-        sendStoredFiles(start, end)
+        sendStoredFiles(start, end, networkManager)
         globals()["motion_tracking"] = True
     else:
         print("No motion Detected: " + str(count))
 
-def sendStoredFiles(startTime, endTime):
+def sendStoredFiles(startTime, endTime, networkManager):
     sentFiles = dict()
     currentItems = os.listdir("images")
     for filename in currentItems:
@@ -85,8 +86,8 @@ def sendStoredFiles(startTime, endTime):
         timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
         # Check 5 seconds before motion and 5 seconds after
         if startTime - timedelta(seconds=5) < timeObj < endTime:
-            sentFiles[timestamp] = filename
-    return sentFiles
+            sentFiles[timestamp] = open(filename, 'rb')
+    networkManager.uploadFrames(sentFiles)
 
 def removeGarbageImages():
     while True:
@@ -116,6 +117,10 @@ async def client():
     count = 0
     frameCount = 0
 
+
+    manager = NetworkManager("http://localhost:3000", {"frame": "/frames"})
+    manager.start()
+
     asyncio.ensure_future(loop.run_in_executor(garbageCollector, removeGarbageImages))
     while True:
         frame = vs.read()
@@ -129,6 +134,7 @@ async def client():
         count += 1
         frameCount += 1
         time.sleep(1/args["framerate"])
+
 #Beign the client part of this
 loop = asyncio.get_event_loop()
 loop.run_until_complete(client())

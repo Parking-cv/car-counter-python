@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 import cv2
 import os
 from src.network.NetworkManager import NetworkManager
+from src.client.MotionTracker import MotionTracker
+from src.client.GarbageImageRemover import GarbageImageRemover
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -25,37 +27,9 @@ ap.add_argument("-f", "--framerate", type=int, default=20,
                 help="framerate of captured footage")
 args = vars(ap.parse_args())
 
+# Important Global but could probably be turned into a class variable
 globals()["motion_tracking"] = True
 
-def check_image(previousFrame, frame):
-    # print("Start Time: " + datetime.now().strftime("%M:%S.%f"))
-
-    i1 = previousFrame
-    i2 = frame
-    assert i1.shape == i2.shape, "Different kinds of images."
-    assert i1.size == i2.size, "Different sizes."
-
-    # For more performance get these to work
-    # grayF1 = cv2.cvtColor(i1, cv2.COLOR_BAYER_BG2GRAY)
-    # grayF2 = cv2.cvtColor(i2, cv2.COLOR_BAYER_BG2GRAY)
-
-    # Currently working on about a .4 second timer, seems to be as good as I am gonna get atm
-    (score, diff) = structural_similarity(i1, i2, full=True, multichannel=True)
-    print("SSIM: {}".format(score))
-
-    # print("End Time: " + datetime.now().strftime("%M:%S.%f"))
-    if score < .9:
-        # print("something happening")
-        return True
-    return False
-
-# initialize the ImageSender object with the socket address of the
-# server
-# sender = imagezmq.ImageSender(connect_to="tcp://{}:5555".format(
-#     args["server_ip"]))
-# get the host name and initialize the video stream
-
-# camera warmup
 time.sleep(2.0)
 
 globals()['lastFrame'] = None
@@ -65,42 +39,6 @@ def saving_frames(frame, count):
     # TimeStamp
     filename = "images/frame_" + datetime.now().isoformat() + ".jpg"
     cv2.imwrite(filename, frame)
-
-def motion_track(previousFrame, frame, count, acceptable_difference, networkManager):
-    # In case this frame is correct, get a correct datetime for the start time
-    start = datetime.now()
-    if check_image(previousFrame, frame):
-        globals()["motion_tracking"] = False
-        time.sleep(5)
-        end = datetime.now()
-        sendStoredFiles(start, end, networkManager)
-        globals()["motion_tracking"] = True
-    else:
-        print("No motion Detected: " + str(count))
-
-def sendStoredFiles(startTime, endTime, networkManager):
-    sentFiles = dict()
-    currentItems = os.listdir("images")
-    for filename in currentItems:
-        timestamp = filename[filename.find("_")+1:filename.rfind(".")]
-        timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
-        # Check 5 seconds before motion and 5 seconds after
-        if startTime - timedelta(seconds=5) < timeObj < endTime:
-            sentFiles[timestamp] = open(filename, 'rb')
-    networkManager.uploadFrames(sentFiles)
-
-def removeGarbageImages():
-    while True:
-        print("Attempting to remove images")
-        now = datetime.now()
-        currentItems = os.listdir("images")
-        for filename in currentItems:
-            timestamp = filename[filename.find("_") + 1:filename.rfind(".")]
-            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
-            if timeObj < (now - timedelta(minutes=1)):
-                print("Removing Files: " + filename)
-                os.remove("images/" + filename)
-        time.sleep(60)
 
 async def client():
     vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
@@ -121,14 +59,20 @@ async def client():
     manager = NetworkManager("http://localhost:3000", {"frame": "/frames"})
     manager.start()
 
-    asyncio.ensure_future(loop.run_in_executor(garbageCollector, removeGarbageImages))
+    motionTracker = MotionTracker(.8, manager)
+    # Going to go with 2 minutes at default because it seems that sending files takes a reasonable amount of time
+    # Wouldn't want to remove an image that needs to be sent
+    garbageRemover = GarbageImageRemover(120)
+    asyncio.ensure_future(loop.run_in_executor(garbageCollector, garbageRemover.start))
+
     while True:
+        # camera can only be read in one thread so get the frame and then send it off when needed
         frame = vs.read()
         asyncio.ensure_future(loop.run_in_executor(saveExecutor, saving_frames, frame, count))
         # Checking once every half second
         if frameCount == (args["framerate"]/2):
             if lastFrame is not None and globals()["motion_tracking"]:
-                asyncio.ensure_future(loop.run_in_executor(trackerExecutor, motion_track, lastFrame, frame, count, .8))
+                asyncio.ensure_future(loop.run_in_executor(trackerExecutor, motionTracker.checkFrames, lastFrame, frame))
             lastFrame = frame
             frameCount = 0
         count += 1

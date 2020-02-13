@@ -3,6 +3,7 @@
 
 from imutils.video import VideoStream
 from datetime import datetime
+from datetime import timedelta
 import argparse
 import time
 from skimage.metrics import structural_similarity
@@ -82,10 +83,23 @@ def sendStoredFiles(startTime, endTime):
     for filename in currentItems:
         timestamp = filename[filename.find("_")+1:filename.rfind(".")]
         timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
-        if startTime < timeObj < endTime:
+        # Check 5 seconds before motion and 5 seconds after
+        if startTime - timedelta(seconds=5) < timeObj < endTime:
             sentFiles[timestamp] = filename
     return sentFiles
 
+def removeGarbageImages():
+    while True:
+        print("Attempting to remove images")
+        now = datetime.now()
+        currentItems = os.listdir("images")
+        for filename in currentItems:
+            timestamp = filename[filename.find("_") + 1:filename.rfind(".")]
+            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+            if timeObj < (now - timedelta(minutes=1)):
+                print("Removing Files: " + filename)
+                os.remove("images/" + filename)
+        time.sleep(60)
 
 async def client():
     vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
@@ -96,10 +110,13 @@ async def client():
     # happening multiple times at once
     trackerExecutor = ThreadPoolExecutor(2)
     saveExecutor = ThreadPoolExecutor(1)
+    garbageCollector = ThreadPoolExecutor(1)
 
     lastFrame = None
     count = 0
     frameCount = 0
+
+    asyncio.ensure_future(loop.run_in_executor(garbageCollector, removeGarbageImages))
     while True:
         frame = vs.read()
         asyncio.ensure_future(loop.run_in_executor(saveExecutor, saving_frames, frame, count))

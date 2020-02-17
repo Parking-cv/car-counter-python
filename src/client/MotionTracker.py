@@ -47,7 +47,7 @@ class MotionTracker():
         currentItems = os.listdir("images")
         for filename in currentItems:
             timestamp = filename[filename.find("_") + 1:filename.rfind(".")]
-            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ07:00")
             # Check 5 seconds before motion and 5 seconds after
             if (startTime - timedelta(seconds=5)) < timeObj < endTime:
                 sentFiles[timestamp] = open("images/" + filename, 'rb')

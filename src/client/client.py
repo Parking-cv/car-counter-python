@@ -37,7 +37,7 @@ globals()['lastFrame'] = None
 def saving_frames(frame, count):
     print("Saving something: " + str(count))
     # TimeStamp
-    filename = "images/frame_" + datetime.now().isoformat() + ".jpg"
+    filename = "images/frame_" + datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ07:00") + ".jpg"
     cv2.imwrite(filename, frame)
 
 async def client():

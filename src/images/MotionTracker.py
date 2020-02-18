@@ -5,11 +5,16 @@ from datetime import timedelta
 from skimage.metrics import structural_similarity
 import os
 
-class MotionTracker():
 
-    def __init__(self, acceptable_difference: float, networkManager: NetworkManager):
+class MotionTracker:
+
+    def __init__(self, acceptable_difference: float, networkManager: NetworkManager, directory=None):
         self.acceptable_difference = acceptable_difference
         self.networkManager = networkManager
+        if directory is None:
+            self.directory = "saved_images"
+        else:
+            self.directory = directory
 
     def checkFrames(self, startFrame, endFrame):
         start = datetime.now()
@@ -44,12 +49,12 @@ class MotionTracker():
 
     def sendStoredFiles(self, startTime, endTime):
         sentFiles = dict()
-        currentItems = os.listdir("images")
+        currentItems = os.listdir(self.directory)
         for filename in currentItems:
             timestamp = filename[filename.find("_") + 1:filename.rfind(".")]
-            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ07:00")
+            timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
             # Check 5 seconds before motion and 5 seconds after
             if (startTime - timedelta(seconds=5)) < timeObj < endTime:
-                sentFiles[timestamp] = open("images/" + filename, 'rb')
+                sentFiles[timestamp] = open(self.directory + "/" + filename, 'rb')
         print("Files were sent")
         self.networkManager.uploadFrames(sentFiles)

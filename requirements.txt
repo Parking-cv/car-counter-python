@@ -2,6 +2,9 @@ scipy==1.4.1
 numpy==1.18.1
 imutils==0.5.3
 opencv-python==4.2.0.32
+scikit-image==0.16.2
 dlib==19.19.0
 picamera==1.13
 requests==2.22.0
+imagezmq==1.0.1
+Pillow==7

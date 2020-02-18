@@ -20,7 +20,8 @@ class GarbageImageRemover:
             currentItems = os.listdir(self.directory)
             for filename in currentItems:
                 timestamp = filename[filename.find("_") + 1:filename.rfind(".")]
-                timeObj = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+                timestampForConversion = timestamp.replace("-06:00", "")
+                timeObj = datetime.strptime(timestampForConversion, "%Y-%m-%dT%H:%M:%S.%f")
                 if timeObj < (now - timedelta(seconds=self.secondsToWait)):
                     print("Removing Files: " + filename)
                     os.remove(self.directory + "/" + filename)

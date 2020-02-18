@@ -51,7 +51,7 @@ async def main():
     frameCount = 0
 
     # Will need to replace this with server code soon, will be testing tomorrow
-    manager = NetworkManager("http://localhost:3000", {"frame": "/frames"})
+    manager = NetworkManager("http://161.6.4.165:4321", {"frame": "/frames"})
     manager.start()
 
     # Value between -1, 1, lower the float the less strict the image checking is to determine motion

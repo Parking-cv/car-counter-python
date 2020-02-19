@@ -37,10 +37,11 @@ async def main():
                                                     args["res_height"]), framerate=args["framerate"]).start()
 
     loop = asyncio.get_event_loop()
-    # 2 Threads, 1 for motion tracking and 1 for saving, allocating more for tracker as it will probably be
+    # 3 Threads, 1 for motion tracking, 1 for saving, and 1 for garbage collecting, allocating more for tracker as it will probably be
     # happening multiple times at once
     trackerExecutor = ThreadPoolExecutor(2)
     saveExecutor = ThreadPoolExecutor(1)
+    # May want to remove this in favor of some sort of stream buffer instead
     garbageCollector = ThreadPoolExecutor(1)
 
     # Used for setting frames to compare against when the motion tracking hits

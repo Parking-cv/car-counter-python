@@ -3,7 +3,7 @@ from queue import Queue
 
 import requests
 
-from src.network.NetworkDaemon import NetworkDaemon
+from network.NetworkDaemon import NetworkDaemon
 
 
 class NetworkManager(object):
@@ -41,11 +41,11 @@ class NetworkManager(object):
         )
 
     def getResponse(self) -> requests.Response:
-        yield self.responses.get()
+        return self.responses.get()
 
     def getResponses(self) -> Generator:
         while not self.responses.empty():
             yield self.responses.get()
 
     def terminate(self):
-        self.daemon.join()
+        self.daemon.terminate()

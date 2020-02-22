@@ -26,9 +26,14 @@ class NetworkDaemon(Thread):
         self.pendingRequests = requests
         self.responses = responses
         self.session = session
-
+        self.loop = True
+    
+    def terminate(self):
+        self.loop = False
+        self.join()
+    
     def run(self):
-        while True:
+        while self.loop:
             # Blocks until an object is put in the queue
             req = self.pendingRequests.get()
             prep = req.prepare()
@@ -42,5 +47,5 @@ class NetworkDaemon(Thread):
                     self.responses.put(res)
                     sent = True
 
-                except ConnectionError:
-                    sleep(15)
+                except ConnectionError as err:
+                    sleep(1)

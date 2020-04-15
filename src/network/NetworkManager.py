@@ -3,7 +3,7 @@ from queue import Queue
 
 import requests
 
-from src.network.NetworkDaemon import NetworkDaemon
+from network.NetworkDaemon import NetworkDaemon
 
 
 class NetworkManager(object):

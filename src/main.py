@@ -6,10 +6,10 @@ import argparse
 import time
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from src.network.NetworkManager import NetworkManager
-from src.images.MotionTracker import MotionTracker
-from src.images.GarbageImageRemover import GarbageImageRemover
-from src.images.ImageSaver import ImageSaver
+from network.NetworkManager import NetworkManager
+from images.MotionTracker import MotionTracker
+from images.GarbageImageRemover import GarbageImageRemover
+from images.ImageSaver import ImageSaver
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -33,7 +33,7 @@ globals()['lastFrame'] = None
 
 
 async def main():
-    vs = VideoStream(usePiCamera=False, resolution=(args["res_width"],
+    vs = VideoStream(usePiCamera=True, resolution=(args["res_width"],
                                                     args["res_height"]), framerate=args["framerate"]).start()
 
     loop = asyncio.get_event_loop()
@@ -71,8 +71,9 @@ async def main():
         asyncio.ensure_future(loop.run_in_executor(saveExecutor, imageSaver.saving_frames, frame, count))
 
         # Checking once every half second
-        if frameCount == (args["framerate"]/2):
+        if frameCount >= (args["framerate"]/2):
             if lastFrame is not None and globals()["motion_tracking"]:
+                print("Lastframe")
                 asyncio.ensure_future(loop.run_in_executor(trackerExecutor, motionTracker.checkFrames, lastFrame, frame))
             lastFrame = frame
             frameCount = 0

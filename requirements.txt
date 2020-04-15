@@ -1,7 +1,7 @@
 scipy==1.4.1
 numpy==1.18.1
 imutils==0.5.3
-opencv-python==4.2.0.32
+# opencv-python==4.1.1.26
 scikit-image==0.16.2
 picamera==1.13
 requests==2.22.0

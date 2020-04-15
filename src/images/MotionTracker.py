@@ -1,4 +1,4 @@
-from src.network.NetworkManager import NetworkManager
+from network.NetworkManager import NetworkManager
 import time
 from datetime import datetime
 from datetime import timedelta
